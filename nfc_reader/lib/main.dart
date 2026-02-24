@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 
 
@@ -26,7 +27,7 @@ class NFCReaderScreen extends StatefulWidget {
 
 class _NFCReaderScreenState extends State<NFCReaderScreen> {
   final List<String> _nfcIds = [];
-  bool _isScanning = true;
+  bool _isScanning = false;
   double _progressValue = 0.0;
   Color _statusColor = Colors.greenAccent;
   String _statusText = "Tekan tombol untuk memulai kembali pemindaian";
@@ -34,88 +35,112 @@ class _NFCReaderScreenState extends State<NFCReaderScreen> {
   @override
   void initState() {
     super.initState();
-    _checkNFCavailability();
+    _checkNFCAvailability();
   }
 
-  Future<void> _checkNFCavailability() async {
-    bool isAvailable = await NfcManager.instance.isAvailable();
-    if (!isAvailable) {
-      setState(() {
-        _statusText = "NFC tidak tersedia di perangkat ini";
-        _statusColor = Colors.redAccent;
-      });
-    }
-  }
-
-  void _startScanning() async {
+  void _checkNFCAvailability() async {
+  bool isAvailable = await NfcManager.instance.isAvailable();
+  if (!isAvailable) {
     setState(() {
-      _isScanning = true;
-      _progressValue = 0.0;
-      _statusText = "Dekatkan kartu NFC...";
-      _statusColor = Colors.orangeAccent;
+      _nfcIds.add("NFC tidak tersedia pada perangkat ini");
     });
+  }
+}
 
-    NfcManager.instance.startSession(
-      onDiscovered: (NfcTag tag) async {
-        final nfcId = tag.data.toString();
+  void _startNFCScan() {
+  if (_isScanning) return;  // Cegah double scanning
+  setState(() {
+    _isScanning = true;
+    _progressValue = 0.2;
+    _statusColor = Colors.orange;
+    _statusText = "Scanning NFC...";
+  });
 
+  NfcManager.instance.startSession(
+    onDiscovered: (NfcTag tag) async {
+      var nfcData = tag.data;
+      String? nfcId = nfcData['nfca']?['identifier']?.toString();
+      String timeStamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+
+      if (nfcId != null) {
         setState(() {
-          _nfcIds.add(nfcId);
+          _nfcIds.insert(0, "$timeStamp - NFC ID: $nfcId");
           _progressValue = 1.0;
-          _statusText = "NFC berhasil dibaca!";
-          _statusColor = Colors.greenAccent;
+          _statusColor = Colors.green;
+          _statusText = "Kartu berhasil dibaca!";
         });
-
-        await NfcManager.instance.stopSession();
+      } else {
         setState(() {
-          _isScanning = false;
+          _nfcIds.insert(0, "$timeStamp - Tidak dapat membaca ID NFC");
+          _progressValue = 1.0;
+          _statusColor = Colors.red;
+          _statusText = "Gagal membaca kartu";
         });
-      },
-    );
-  }
+      }
+    },
+  );
+}
 
-  void _stopScanning() async {
-    await NfcManager.instance.stopSession();
-    setState(() {
-      _isScanning = false;
-      _statusText = "Pemindaian dihentikan";
-      _statusColor = Colors.redAccent;
-    });
-  }
+void _stopNFCScan() async {
+  await NfcManager.instance.stopSession();
+  setState(() {
+    _isScanning = false;
+    _progressValue = 0.0;
+    _statusColor = Colors.blue;
+    _statusText = "Tekan tombol untuk memulai pemindaian";
+  });
+}
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("NFC Reader"),
-        backgroundColor: Colors.teal,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // status text
-            Container(
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: _statusColor,
-                borderRadius: BorderRadius.circular(10)
-              ),
-            ),
-            SizedBox(height:20,),
+  return Scaffold(
+    // Struktur dasar halaman (layout standar Material Design)
+    appBar: AppBar(
+      title: Text("NFC Reader"), // Judul di AppBar
+    ),
 
-            // INDIKATOR SCANNING
-            AnimatedContainer(
-              duration: Duration(seconds: 1),
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _isScanning ? Colors.orangeAccent : Colors.grey,
-              ),
-              child: Icon(Icons.nfc, size: 50, color: Colors.white,),
+    body: Padding(
+      padding: const EdgeInsets.all(16.0), // Margin isi layar
+      child: Column(
+        children: [
+
+          // ================= STATUS BOX =================
+          Container(
+            padding: EdgeInsets.all(10), // Padding dalam box status
+            decoration: BoxDecoration(
+              color: _statusColor, // Warna mengikuti status (biru/hijau/merah)
+              borderRadius: BorderRadius.circular(10), // Sudut melengkung
             ),
-             SizedBox(height: 20),
+            child: Text(
+              _statusText, // Teks status dinamis
+              style: TextStyle(
+                color: Colors.white, // Warna teks
+                fontSize: 18,        // Ukuran teks
+              ),
+            ),
+          ),
+
+          SizedBox(height: 20), // Spasi vertikal
+
+          // ================= INDIKATOR SCANNING =================
+          AnimatedContainer(
+            duration: Duration(seconds: 1), // Animasi perubahan warna
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle, // Bentuk lingkaran
+              color: _isScanning
+                  ? Colors.orangeAccent // Warna saat scanning aktif
+                  : Colors.grey,        // Warna saat idle
+            ),
+            child: Icon(
+              Icons.nfc,          // Icon NFC
+              size: 50,
+              color: Colors.white,
+            ),
+          ),
+
+          SizedBox(height: 20),
 
           // ================= PROGRESS BAR =================
           LinearProgressIndicator(
@@ -242,55 +267,9 @@ class _NFCReaderScreenState extends State<NFCReaderScreen> {
               ),
             ],
           ),
-            
-
-            LinearProgressIndicator(
-              value: _isScanning ? null : _progressValue,
-              minHeight: 8,
-              backgroundColor: Colors.grey[300],
-              color: _statusColor,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              _statusText,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: _statusColor,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _isScanning ? _stopScanning : _startScanning,
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    _isScanning ? Colors.redAccent : Colors.teal,
-              ),
-              child: Text(
-                _isScanning ? "Stop Scan" : "Mulai Scan",
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Divider(),
-            const Text(
-              "Riwayat NFC:",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _nfcIds.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    leading: const Icon(Icons.nfc),
-                    title: Text(_nfcIds[index]),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

@@ -1,0 +1,28 @@
+[
+    {
+        "nama": "Nabela Ningxue",
+        "umur": 20,
+        "alamat": {
+            "jalan": "Jl. Bangau",
+            "kota": "Palemabng",
+            "provinsi": "Sumatera Selatan"
+        },
+        "hobi": [
+            "membaca",
+            "bersepeda"
+        ]
+    },
+    {
+        "nama": "Ferdinan Lubis",
+        "umur": 25,
+        "alamat": {
+            "jalan": "Jl. Cipto",
+            "kota": "Jakarta",
+            "provinsi": "DKI Jakarta"
+        },
+        "hobi": [
+            "menulis",
+            "makan"
+        ]
+    }
+]

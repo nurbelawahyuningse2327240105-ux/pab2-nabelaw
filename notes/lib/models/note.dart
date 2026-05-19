@@ -1,38 +1,36 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Note {
-  String? id;
-  String title;
-  String description;
-  String? imageBase64;
-  DateTime createdAt;
+  final String? id;
+  final String title;
+  final String description;
+  final String? imageBase64;
+  final DateTime createdAt;
 
   Note({
     this.id,
     required this.title,
     required this.description,
     this.imageBase64,
-    DateTime? createdAt,
-  }) : createdAt = createdAt ?? DateTime.now();
+    required this.createdAt,
+  });
 
-  // Convert Note to Map for Firestore
-  Map<String, dynamic> toMap() {
-    return {
-      'title': title,
-      'description': description,
-      'imageBase64': imageBase64,
-      'createdAt': Timestamp.fromDate(createdAt),
-    };
-  }
-
-  // Create Note from Firestore document
+  /// Create a Note from a Firestore document snapshot
   factory Note.fromMap(String id, Map<String, dynamic> map) {
     return Note(
       id: id,
       title: map['title'] ?? '',
       description: map['description'] ?? '',
       imageBase64: map['imageBase64'],
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
     );
+  }
+
+  /// Convert Note to a Map for Firestore
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'description': description,
+      'imageBase64': imageBase64,
+      'createdAt': createdAt.toIso8601String(),
+    };
   }
 }

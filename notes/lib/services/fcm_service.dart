@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'web_notification_stub.dart' if (dart.library.html) 'web_notification.dart';
 
 class FcmService {
   static final FcmService _instance = FcmService._internal();
@@ -13,7 +14,7 @@ class FcmService {
   final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  static const String _baseUrl = 'https://notes-rest-api-ce1e.vercel.app';
+  static const String _baseUrl = 'https://notes-rest-api-iota.vercel.app';
   static const String _topicName = 'notes';
 
   /// Initialize FCM and Local Notifications
@@ -125,6 +126,16 @@ class FcmService {
         // On Web, foreground messages are handled by the browser
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
           debugPrint('Foreground message on web: ${message.notification?.title}');
+          if (message.notification != null) {
+            showWebNotification(
+              message.notification!.title ?? 'Notifikasi Baru',
+              message.notification!.body ?? '',
+            );
+          } else if (message.data.isNotEmpty) {
+            final title = message.data['title'] ?? 'Catatan Baru';
+            final body = message.data['body'] ?? 'Cek aplikasi Anda';
+            showWebNotification(title, body);
+          }
         });
       }
 
@@ -154,6 +165,34 @@ class FcmService {
       }
     } catch (e) {
       debugPrint('Error during FcmService initialization: $e');
+    }
+  }
+
+  /// Subscribe to a specific topic
+  Future<void> subscribeToTopic(String topic) async {
+    if (kIsWeb) {
+      debugPrint('Topic subscription is not supported on Web.');
+      return;
+    }
+    try {
+      await _messaging.subscribeToTopic(topic);
+      debugPrint('Successfully subscribed to topic: $topic');
+    } catch (e) {
+      debugPrint('Error subscribing to topic $topic: $e');
+    }
+  }
+
+  /// Unsubscribe from a specific topic
+  Future<void> unsubscribeFromTopic(String topic) async {
+    if (kIsWeb) {
+      debugPrint('Topic unsubscription is not supported on Web.');
+      return;
+    }
+    try {
+      await _messaging.unsubscribeFromTopic(topic);
+      debugPrint('Successfully unsubscribed from topic: $topic');
+    } catch (e) {
+      debugPrint('Error unsubscribing from topic $topic: $e');
     }
   }
 
